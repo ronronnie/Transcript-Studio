@@ -1,19 +1,27 @@
 import { FileText, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
-export function Sidebar() {
+import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/sign-out-button";
+
+export function Sidebar({ username }: { username: string }) {
   return (
     <aside className="bg-sidebar text-sidebar-foreground flex h-full w-72 shrink-0 flex-col border-r">
-      <div className="flex items-center gap-2 px-4 py-4">
-        <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-md">
-          <FileText className="size-4" />
+      <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-md">
+            <FileText className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-tight">
+              Transcript Studio
+            </p>
+            <p className="text-muted-foreground truncate text-xs">{username}</p>
+          </div>
         </div>
-        <span className="text-sm font-semibold tracking-tight">
-          Transcript Studio
-        </span>
+        <SignOutButton />
       </div>
 
-      <div className="px-3">
+      <div className="px-3 pt-3">
         <Button
           variant="outline"
           size="sm"
