@@ -31,19 +31,21 @@ export function ImportDialog({
   // Upload tab
   const [file, setFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
   // Paste tab
   const [pasteTitle, setPasteTitle] = useState("");
   const [pasteContent, setPasteContent] = useState("");
+  const [pasteError, setPasteError] = useState<string | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function reset() {
     setFile(null);
     setUploadTitle("");
+    setUploadError(null);
     setPasteTitle("");
     setPasteContent("");
-    setError(null);
+    setPasteError(null);
     setSubmitting(false);
   }
 
@@ -55,10 +57,10 @@ export function ImportDialog({
   async function submitUpload(event: React.FormEvent) {
     event.preventDefault();
     if (!file) {
-      setError("Please choose an audio file.");
+      setUploadError("Please choose an audio file.");
       return;
     }
-    setError(null);
+    setUploadError(null);
     setSubmitting(true);
     try {
       const body = new FormData();
@@ -71,13 +73,13 @@ export function ImportDialog({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error ?? "Upload failed.");
+        setUploadError(data?.error ?? "Upload failed.");
         return;
       }
       onCreated(data.transcript as TranscriptDTO);
       handleOpenChange(false);
     } catch {
-      setError("Upload failed. Please try again.");
+      setUploadError("Upload failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -86,10 +88,10 @@ export function ImportDialog({
   async function submitPaste(event: React.FormEvent) {
     event.preventDefault();
     if (!pasteContent.trim()) {
-      setError("Please paste some transcript text.");
+      setPasteError("Please paste some transcript text.");
       return;
     }
-    setError(null);
+    setPasteError(null);
     setSubmitting(true);
     try {
       const res = await fetch("/api/transcripts/paste", {
@@ -99,13 +101,13 @@ export function ImportDialog({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error ?? "Could not save transcript.");
+        setPasteError(data?.error ?? "Could not save transcript.");
         return;
       }
       onCreated(data.transcript as TranscriptDTO);
       handleOpenChange(false);
     } catch {
-      setError("Could not save transcript. Please try again.");
+      setPasteError("Could not save transcript. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -121,13 +123,16 @@ export function ImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="upload" className="mt-1">
+        <Tabs
+          defaultValue="upload"
+          className="mt-1 flex w-full min-w-0 flex-col"
+        >
           <TabsList className="w-full">
             <TabsTrigger value="upload">Upload audio</TabsTrigger>
             <TabsTrigger value="paste">Paste transcript</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="upload">
+          <TabsContent value="upload" className="min-w-0">
             <form onSubmit={submitUpload} className="flex flex-col gap-4 pt-2">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="audio-file">Audio file (mp3, m4a, wav)</Label>
@@ -147,9 +152,9 @@ export function ImportDialog({
                   onChange={(e) => setUploadTitle(e.target.value)}
                 />
               </div>
-              {error && (
+              {uploadError && (
                 <p role="alert" className="text-destructive text-sm">
-                  {error}
+                  {uploadError}
                 </p>
               )}
               <Button type="submit" disabled={submitting} className="w-full">
@@ -159,7 +164,7 @@ export function ImportDialog({
             </form>
           </TabsContent>
 
-          <TabsContent value="paste">
+          <TabsContent value="paste" className="min-w-0">
             <form onSubmit={submitPaste} className="flex flex-col gap-4 pt-2">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="paste-title">Title (optional)</Label>
@@ -176,13 +181,14 @@ export function ImportDialog({
                   id="paste-content"
                   placeholder="Paste your transcript here…"
                   rows={8}
+                  className="max-h-64 w-full"
                   value={pasteContent}
                   onChange={(e) => setPasteContent(e.target.value)}
                 />
               </div>
-              {error && (
+              {pasteError && (
                 <p role="alert" className="text-destructive text-sm">
-                  {error}
+                  {pasteError}
                 </p>
               )}
               <Button type="submit" disabled={submitting} className="w-full">

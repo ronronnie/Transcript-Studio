@@ -19,3 +19,13 @@ export interface TranscriptDTO {
   createdAt: string;
   updatedAt: string;
 }
+
+export type MessageRole = "user" | "assistant";
+
+export interface MessageDTO {
+  id: string;
+  transcriptId: string;
+  role: MessageRole;
+  content: string;
+  createdAt: string;
+}

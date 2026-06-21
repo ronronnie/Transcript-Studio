@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 
+import { ChatPanel } from "@/components/chat-panel";
 import { ImportDialog } from "@/components/import-dialog";
 import { TranscriptSidebar } from "@/components/transcript-sidebar";
 import { TranscriptView } from "@/components/transcript-view";
@@ -78,9 +79,14 @@ export function Workspace({ username }: { username: string }) {
         onImport={() => setImportOpen(true)}
       />
 
-      <main className="flex flex-1 flex-col overflow-y-auto">
+      <main className="flex flex-1 overflow-hidden">
         {selected ? (
-          <TranscriptView transcript={selected} />
+          <>
+            <div className="flex-1 overflow-y-auto">
+              <TranscriptView transcript={selected} />
+            </div>
+            <ChatPanel key={selected.id} transcript={selected} />
+          </>
         ) : (
           <div className="flex flex-1 items-center justify-center p-6">
             <Card className="w-full max-w-md text-center">

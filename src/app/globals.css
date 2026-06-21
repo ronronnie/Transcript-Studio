@@ -4,6 +4,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* base-ui emits data-orientation; the Nova component styles target
+   data-horizontal / data-vertical. Map them so Tabs (and similar) lay out
+   correctly. */
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
