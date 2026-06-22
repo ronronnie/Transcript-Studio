@@ -16,6 +16,7 @@ export interface TranscriptDTO {
   content: string | null;
   durationSeconds: number | null;
   assemblyaiId: string | null;
+  isSample: boolean;
   createdAt: string;
   updatedAt: string;
 }

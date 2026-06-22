@@ -2,6 +2,7 @@ import "server-only";
 
 import { formatTranscriptText, getTranscription } from "@/lib/assemblyai";
 import { type Transcript, updateTranscript } from "@/lib/db";
+import { recordUploadSeconds } from "@/lib/usage";
 
 /**
  * Reconcile a single transcript row with its AssemblyAI job.
@@ -31,6 +32,8 @@ export async function syncTranscript(row: Transcript): Promise<Transcript> {
       content: formatTranscriptText(job),
       durationSeconds: job.audio_duration ?? null,
     });
+    // Count the transcribed audio toward the global daily minutes cap.
+    if (job.audio_duration) await recordUploadSeconds(job.audio_duration);
     return updated ?? row;
   }
 

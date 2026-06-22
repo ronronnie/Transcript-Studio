@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { ChatPanel } from "@/components/chat-panel";
+import { ConsentNotice } from "@/components/consent-notice";
 import { ImportDialog } from "@/components/import-dialog";
+import { RecordDialog } from "@/components/record-dialog";
 import { TranscriptSidebar } from "@/components/transcript-sidebar";
 import { TranscriptView } from "@/components/transcript-view";
 import {
@@ -22,6 +26,8 @@ export function Workspace({ username }: { username: string }) {
   const [transcripts, setTranscripts] = useState<TranscriptDTO[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchList = useCallback(async () => {
@@ -32,6 +38,8 @@ export function Workspace({ username }: { username: string }) {
       setTranscripts(data.transcripts);
     } catch {
       // ignore transient fetch errors; the next poll/refresh will retry
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -67,6 +75,32 @@ export function Workspace({ username }: { username: string }) {
     setSelectedId(transcript.id);
   }
 
+  function handleUpdated(updated: TranscriptDTO) {
+    setTranscripts((prev) =>
+      prev.map((t) => (t.id === updated.id ? updated : t))
+    );
+  }
+
+  function handleDeleted(id: string) {
+    setTranscripts((prev) => prev.filter((t) => t.id !== id));
+    setSelectedId((curr) => (curr === id ? null : curr));
+  }
+
+  async function handleDeleteAll() {
+    try {
+      const res = await fetch("/api/transcripts", { method: "DELETE" });
+      if (!res.ok) {
+        toast.error("Could not delete your data.");
+        return;
+      }
+      setSelectedId(null);
+      await fetchList(); // re-seeds the sample transcript
+      toast.success("All your data was deleted.");
+    } catch {
+      toast.error("Could not delete your data.");
+    }
+  }
+
   const selected = transcripts.find((t) => t.id === selectedId) ?? null;
 
   return (
@@ -75,15 +109,22 @@ export function Workspace({ username }: { username: string }) {
         username={username}
         transcripts={transcripts}
         selectedId={selectedId}
+        loading={loading}
         onSelect={setSelectedId}
         onImport={() => setImportOpen(true)}
+        onRecord={() => setRecordOpen(true)}
+        onDeleteAll={handleDeleteAll}
       />
 
       <main className="flex flex-1 overflow-hidden">
         {selected ? (
           <>
             <div className="flex-1 overflow-y-auto">
-              <TranscriptView transcript={selected} />
+              <TranscriptView
+                transcript={selected}
+                onUpdated={handleUpdated}
+                onDeleted={handleDeleted}
+              />
             </div>
             <ChatPanel key={selected.id} transcript={selected} />
           </>
@@ -118,6 +159,16 @@ export function Workspace({ username }: { username: string }) {
         onOpenChange={setImportOpen}
         onCreated={handleCreated}
       />
+
+      {recordOpen && (
+        <RecordDialog
+          open={recordOpen}
+          onOpenChange={setRecordOpen}
+          onCreated={handleCreated}
+        />
+      )}
+
+      <ConsentNotice />
     </div>
   );
 }

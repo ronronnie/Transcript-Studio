@@ -8,6 +8,13 @@
       "when": 1781874131320,
       "tag": "0000_lonely_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782071762921,
+      "tag": "0001_shocking_star_brand",
+      "breakpoints": true
     }
   ]
 }

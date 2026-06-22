@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { buildChatPayload } from "@/lib/chat";
 import { addMessage, getTranscript, listMessages } from "@/lib/db";
 import { chat, type LlmMessage } from "@/lib/llm";
+import { consumeChat } from "@/lib/usage";
 
 /**
  * Chat about a transcript. Persists the user message, builds the prompt
@@ -48,6 +49,12 @@ export async function POST(request: Request) {
       { error: "This transcript isn't ready to chat about yet." },
       { status: 409 }
     );
+  }
+
+  // Global daily cap (single shared account) to protect API spend.
+  const limit = await consumeChat();
+  if (!limit.allowed) {
+    return NextResponse.json({ error: limit.error }, { status: 429 });
   }
 
   // Persist the user's message, then load the full history (which now includes

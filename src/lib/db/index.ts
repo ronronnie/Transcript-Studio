@@ -32,6 +32,7 @@ export interface CreateTranscriptInput {
   content?: string | null;
   durationSeconds?: number | null;
   assemblyaiId?: string | null;
+  isSample?: boolean;
   owner?: string;
 }
 
@@ -85,6 +86,7 @@ export async function createTranscript(
       content: input.content ?? null,
       durationSeconds: input.durationSeconds ?? null,
       assemblyaiId: input.assemblyaiId ?? null,
+      isSample: input.isSample ?? false,
     })
     .returning();
 
@@ -124,6 +126,29 @@ export async function deleteTranscript(
     .returning({ id: transcripts.id });
 
   return deleted.length > 0;
+}
+
+/** Delete every transcript for an owner (cascades to messages). */
+export async function deleteAllTranscripts(
+  owner: string = DEFAULT_OWNER
+): Promise<number> {
+  const deleted = await db
+    .delete(transcripts)
+    .where(eq(transcripts.owner, owner))
+    .returning({ id: transcripts.id });
+
+  return deleted.length;
+}
+
+/** Count an owner's transcripts (used to decide whether to seed the sample). */
+export async function countTranscripts(
+  owner: string = DEFAULT_OWNER
+): Promise<number> {
+  const rows = await db
+    .select({ id: transcripts.id })
+    .from(transcripts)
+    .where(eq(transcripts.owner, owner));
+  return rows.length;
 }
 
 /** List messages for a transcript, oldest first (chat order). */
