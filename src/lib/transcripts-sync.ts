@@ -1,6 +1,10 @@
 import "server-only";
 
-import { formatTranscriptText, getTranscription } from "@/lib/assemblyai";
+import {
+  describeDiarization,
+  formatTranscriptText,
+  getTranscription,
+} from "@/lib/assemblyai";
 import { type Transcript, updateTranscript } from "@/lib/db";
 import { recordUploadSeconds } from "@/lib/usage";
 
@@ -27,6 +31,33 @@ export async function syncTranscript(row: Transcript): Promise<Transcript> {
   }
 
   if (job.status === "completed") {
+    // --- Diarization diagnostics (item 1 & 4) ---
+    const diag = describeDiarization(job);
+    console.log(
+      `[assemblyai] transcript ${row.assemblyaiId} completed:`,
+      JSON.stringify({
+        language: diag.languageCode,
+        audio_duration: job.audio_duration,
+        utteranceCount: diag.utteranceCount,
+        distinctSpeakers: diag.distinctSpeakers,
+        speakers: diag.speakers,
+        utterances: (job.utterances ?? []).map((u) => ({
+          speaker: u.speaker,
+          start: u.start,
+          text: u.text.slice(0, 80),
+        })),
+      })
+    );
+    if (diag.utteranceCount === 0) {
+      console.warn(
+        `[assemblyai] transcript ${row.assemblyaiId}: NO utterances returned — diarization may be unsupported for language "${diag.languageCode}". Falling back to plain text. (parsing vs audio: this is a response-level issue.)`
+      );
+    } else if (diag.distinctSpeakers <= 1) {
+      console.warn(
+        `[assemblyai] transcript ${row.assemblyaiId}: only ${diag.distinctSpeakers} speaker detected across ${diag.utteranceCount} utterances. If the audio clearly has 2+ voices, this points to an AUDIO-CAPTURE issue (e.g. one mixed channel / voices too similar), not a parsing bug — the builder formats exactly what AssemblyAI returned.`
+      );
+    }
+
     const updated = await updateTranscript(row.id, {
       status: "ready",
       content: formatTranscriptText(job),

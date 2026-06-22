@@ -89,24 +89,39 @@ export function RecordDialog({
   const pausedAtRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const cleanup = useCallback(() => {
+  // Monotonic generation: increments whenever a start is superseded or the
+  // dialog tears down. Guards against React StrictMode double-invoking the open
+  // effect, which would otherwise acquire two mic streams and leak one (leaving
+  // the browser's recording indicator on forever).
+  const genRef = useRef(0);
+
+  // Release the microphone and audio resources (but not the recorder).
+  const releaseMedia = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
-    audioCtxRef.current?.close().catch(() => {});
+    const ctx = audioCtxRef.current;
     audioCtxRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    if (ctx && ctx.state !== "closed") ctx.close().catch(() => {});
+    const stream = streamRef.current;
     streamRef.current = null;
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+    stream?.getTracks().forEach((t) => t.stop());
+  }, []);
+
+  const cleanup = useCallback(() => {
+    genRef.current += 1; // invalidate any in-flight start()
+    releaseMedia();
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder && recorder.state !== "inactive") {
       try {
-        recorderRef.current.stop();
+        recorder.stop();
       } catch {
         // already stopped
       }
     }
-    recorderRef.current = null;
-  }, []);
+  }, [releaseMedia]);
 
   // Live level meter (a simple waveform) drawn from an AnalyserNode.
   const startMeter = useCallback((stream: MediaStream) => {
@@ -153,6 +168,10 @@ export function RecordDialog({
   }, []);
 
   const start = useCallback(async () => {
+    // Release any prior session and claim a new generation for this run.
+    cleanup();
+    const gen = genRef.current;
+
     setError(null);
     setPhase("requesting");
     setElapsed(0);
@@ -173,6 +192,7 @@ export function RecordDialog({
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
+      if (gen !== genRef.current) return; // superseded; ignore
       const name = err instanceof DOMException ? err.name : "";
       if (name === "NotAllowedError" || name === "SecurityError") {
         setError(
@@ -184,6 +204,13 @@ export function RecordDialog({
         setError("Could not access the microphone. Please try again.");
       }
       setPhase("error");
+      return;
+    }
+
+    // If this run was superseded while awaiting permission (e.g. StrictMode
+    // remount), stop the stream we just acquired so the mic is released.
+    if (gen !== genRef.current) {
+      stream.getTracks().forEach((t) => t.stop());
       return;
     }
 
@@ -225,7 +252,7 @@ export function RecordDialog({
       );
     }, 200);
     setPhase("recording");
-  }, [startMeter]);
+  }, [cleanup, startMeter]);
 
   // Start recording when the dialog opens; tear everything down when it closes.
   // Kicking off capture (and its setState) on open is the intended behavior.
@@ -258,12 +285,12 @@ export function RecordDialog({
 
   function stop() {
     const recorder = recorderRef.current;
+    // recorder.onstop fires after this and builds the blob from collected
+    // chunks; it doesn't need the live stream, so release the mic now.
     if (recorder && recorder.state !== "inactive") {
       recorder.stop();
     }
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
+    releaseMedia();
   }
 
   function close(next: boolean) {

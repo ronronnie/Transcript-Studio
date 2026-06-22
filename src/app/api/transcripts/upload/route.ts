@@ -47,6 +47,11 @@ export async function POST(request: Request) {
   const title =
     typeof rawTitle === "string" && rawTitle.trim() ? rawTitle.trim() : null;
   const source = form.get("source") === "recording" ? "recording" : "upload";
+  const rawSpeakers = form.get("speakersExpected");
+  const speakersExpected =
+    typeof rawSpeakers === "string" && Number.parseInt(rawSpeakers, 10) >= 1
+      ? Number.parseInt(rawSpeakers, 10)
+      : undefined;
 
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json(
@@ -90,7 +95,9 @@ export async function POST(request: Request) {
     // Read bytes, forward to AssemblyAI, then let the buffer go out of scope.
     const bytes = await file.arrayBuffer();
     const uploadUrl = await uploadAudio(bytes);
-    const assemblyaiId = await startTranscription(uploadUrl);
+    const assemblyaiId = await startTranscription(uploadUrl, {
+      speakersExpected,
+    });
 
     const transcript = await createTranscript({
       source,

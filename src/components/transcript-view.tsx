@@ -7,12 +7,14 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -24,6 +26,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +54,37 @@ function formatDuration(seconds: number | null): string | null {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const SPEAKER_LINE = /^(Speaker [^:]+):\s*(.*)$/;
+// Matches a leading "Label:" at the start of a line. Generic enough to match
+// both "Speaker A:" and renamed labels like "Alice:".
+const SPEAKER_LINE = /^([^:\n]{1,40}):\s*(.*)$/;
+
+/** Distinct speaker/label names found at the start of transcript lines. */
+function extractSpeakerLabels(content: string): string[] {
+  const seen = new Set<string>();
+  for (const line of content.split("\n")) {
+    const match = line.match(SPEAKER_LINE);
+    if (match) seen.add(match[1].trim());
+  }
+  return Array.from(seen);
+}
+
+/** Replace each "oldLabel:" line-prefix with "newLabel:". */
+function applySpeakerRenames(
+  content: string,
+  renames: Record<string, string>
+): string {
+  return content
+    .split("\n")
+    .map((line) => {
+      const match = line.match(SPEAKER_LINE);
+      if (!match) return line;
+      const label = match[1].trim();
+      const next = renames[label]?.trim();
+      if (!next || next === label) return line;
+      return `${next}: ${match[2]}`;
+    })
+    .join("\n");
+}
 
 function TranscriptBody({ content }: { content: string }) {
   const lines = content.split("\n").filter((line) => line.trim().length > 0);
@@ -82,9 +121,49 @@ export function TranscriptView({
   const [contentDraft, setContentDraft] = useState(transcript.content ?? "");
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [speakersOpen, setSpeakersOpen] = useState(false);
+  const [speakerDraft, setSpeakerDraft] = useState<Record<string, string>>({});
 
   const duration = formatDuration(transcript.durationSeconds);
   const readOnly = transcript.isSample;
+  const speakerLabels = transcript.content
+    ? extractSpeakerLabels(transcript.content)
+    : [];
+
+  function openSpeakers() {
+    const labels = transcript.content
+      ? extractSpeakerLabels(transcript.content)
+      : [];
+    setSpeakerDraft(Object.fromEntries(labels.map((l) => [l, l])));
+    setSpeakersOpen(true);
+  }
+
+  async function saveSpeakers() {
+    if (!transcript.content) return;
+    const next = applySpeakerRenames(transcript.content, speakerDraft);
+    if (next === transcript.content) {
+      setSpeakersOpen(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/transcripts/${transcript.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error ?? "Could not rename speakers.");
+        return;
+      }
+      onUpdated(data.transcript as TranscriptDTO);
+      setSpeakersOpen(false);
+      toast.success("Speakers renamed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function saveTitle() {
     const next = titleDraft.trim();
@@ -226,6 +305,12 @@ export function TranscriptView({
                     Edit transcript
                   </DropdownMenuItem>
                 )}
+                {transcript.status === "ready" && speakerLabels.length > 0 && (
+                  <DropdownMenuItem onClick={openSpeakers}>
+                    <Users className="size-4" />
+                    Rename speakers
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={() => setConfirmOpen(true)}
@@ -319,6 +404,53 @@ export function TranscriptView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={speakersOpen} onOpenChange={setSpeakersOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename speakers</DialogTitle>
+            <DialogDescription>
+              Give each detected speaker a real name. Changes are saved to the
+              transcript.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            {Object.keys(speakerDraft).map((label) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-muted-foreground w-28 shrink-0 truncate text-sm">
+                  {label}
+                </span>
+                <Label htmlFor={`spk-${label}`} className="sr-only">
+                  {label}
+                </Label>
+                <Input
+                  id={`spk-${label}`}
+                  value={speakerDraft[label]}
+                  onChange={(e) =>
+                    setSpeakerDraft((prev) => ({
+                      ...prev,
+                      [label]: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSpeakersOpen(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button onClick={saveSpeakers} disabled={busy}>
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              Save names
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
