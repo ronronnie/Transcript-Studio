@@ -72,6 +72,7 @@ export function RecordDialog({
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [title, setTitle] = useState("");
+  const [speakers, setSpeakers] = useState("");
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -300,6 +301,7 @@ export function RecordDialog({
       setError(null);
       setElapsed(0);
       setTitle("");
+      setSpeakers("");
     }
     onOpenChange(next);
   }
@@ -315,6 +317,9 @@ export function RecordDialog({
       body.append("file", blob, `recording.${ext}`);
       body.append("source", "recording");
       if (title.trim()) body.append("title", title.trim());
+      if (Number.parseInt(speakers, 10) >= 1) {
+        body.append("speakersExpected", String(Number.parseInt(speakers, 10)));
+      }
 
       const res = await fetch("/api/transcripts/upload", {
         method: "POST",
@@ -427,6 +432,20 @@ export function RecordDialog({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="recording-speakers">
+                Expected speakers (optional)
+              </Label>
+              <Input
+                id="recording-speakers"
+                type="number"
+                min={1}
+                max={10}
+                placeholder="Auto-detect"
+                value={speakers}
+                onChange={(e) => setSpeakers(e.target.value)}
               />
             </div>
             {error && (

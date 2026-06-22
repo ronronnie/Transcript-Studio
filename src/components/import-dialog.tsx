@@ -31,6 +31,7 @@ export function ImportDialog({
   // Upload tab
   const [file, setFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
+  const [speakers, setSpeakers] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   // Paste tab
   const [pasteTitle, setPasteTitle] = useState("");
@@ -42,6 +43,7 @@ export function ImportDialog({
   function reset() {
     setFile(null);
     setUploadTitle("");
+    setSpeakers("");
     setUploadError(null);
     setPasteTitle("");
     setPasteContent("");
@@ -66,6 +68,9 @@ export function ImportDialog({
       const body = new FormData();
       body.append("file", file);
       if (uploadTitle.trim()) body.append("title", uploadTitle.trim());
+      if (Number.parseInt(speakers, 10) >= 1) {
+        body.append("speakersExpected", String(Number.parseInt(speakers, 10)));
+      }
 
       const res = await fetch("/api/transcripts/upload", {
         method: "POST",
@@ -151,6 +156,24 @@ export function ImportDialog({
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
                 />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="upload-speakers">
+                  Expected speakers (optional)
+                </Label>
+                <Input
+                  id="upload-speakers"
+                  type="number"
+                  min={1}
+                  max={10}
+                  placeholder="Auto-detect"
+                  value={speakers}
+                  onChange={(e) => setSpeakers(e.target.value)}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Leave blank to auto-detect. A hint can help when several
+                  voices sound similar.
+                </p>
               </div>
               {uploadError && (
                 <p role="alert" className="text-destructive text-sm">
