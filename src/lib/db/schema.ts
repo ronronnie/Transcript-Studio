@@ -21,6 +21,20 @@ import {
  * server-side data layer / API routes, which scope queries to the current owner.
  */
 
+export const folders = pgTable("folders", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  owner: text("owner").notNull().default("default-user"),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const transcripts = pgTable("transcripts", {
   id: uuid("id")
     .primaryKey()
@@ -36,6 +50,11 @@ export const transcripts = pgTable("transcripts", {
   assemblyaiId: text("assemblyai_id"),
   // Read-only seeded demo transcript (cannot be edited/deleted by the user).
   isSample: boolean("is_sample").notNull().default(false),
+  // Optional folder. ON DELETE SET NULL: deleting a folder unfiles its
+  // transcripts rather than deleting them.
+  folderId: uuid("folder_id").references(() => folders.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -82,3 +101,5 @@ export type NewTranscript = typeof transcripts.$inferInsert;
 export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
 export type DailyUsage = typeof dailyUsage.$inferSelect;
+export type Folder = typeof folders.$inferSelect;
+export type NewFolder = typeof folders.$inferInsert;

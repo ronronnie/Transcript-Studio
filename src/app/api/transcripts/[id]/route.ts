@@ -27,21 +27,19 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
-  if (existing.isSample) {
-    return NextResponse.json(
-      { error: "The sample transcript is read-only." },
-      { status: 403 }
-    );
-  }
 
-  let body: { title?: unknown; content?: unknown };
+  let body: { title?: unknown; content?: unknown; folderId?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const patch: { title?: string | null; content?: string | null } = {};
+  const patch: {
+    title?: string | null;
+    content?: string | null;
+    folderId?: string | null;
+  } = {};
   if (typeof body.title === "string") {
     const t = body.title.trim();
     patch.title = t ? t : null;
@@ -49,6 +47,25 @@ export async function PATCH(
   if (typeof body.content === "string") {
     patch.content = body.content;
   }
+  // folderId is intentionally optional: present (string|null) = move,
+  // absent = leave unchanged. Moving is organization, so it's allowed even
+  // for the read-only sample.
+  if ("folderId" in body) {
+    patch.folderId =
+      typeof body.folderId === "string" && body.folderId ? body.folderId : null;
+  }
+
+  // The sample is read-only for content/title, but may still be filed.
+  if (
+    existing.isSample &&
+    (patch.title !== undefined || patch.content !== undefined)
+  ) {
+    return NextResponse.json(
+      { error: "The sample transcript is read-only." },
+      { status: 403 }
+    );
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }

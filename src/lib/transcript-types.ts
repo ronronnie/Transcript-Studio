@@ -17,6 +17,15 @@ export interface TranscriptDTO {
   durationSeconds: number | null;
   assemblyaiId: string | null;
   isSample: boolean;
+  folderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FolderDTO {
+  id: string;
+  owner: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
 }

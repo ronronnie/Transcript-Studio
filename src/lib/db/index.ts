@@ -4,6 +4,8 @@ import { and, asc, desc, eq } from "drizzle-orm";
 
 import { db } from "./client";
 import {
+  type Folder,
+  folders,
   type Message,
   type MessageRole,
   messages,
@@ -23,7 +25,73 @@ import {
 
 const DEFAULT_OWNER = "default-user";
 
-export type { Transcript, Message };
+export type { Transcript, Message, Folder };
+
+// --- Folders ---------------------------------------------------------------
+
+/** List an owner's folders, alphabetically. */
+export async function listFolders(
+  owner: string = DEFAULT_OWNER
+): Promise<Folder[]> {
+  return db
+    .select()
+    .from(folders)
+    .where(eq(folders.owner, owner))
+    .orderBy(asc(folders.name));
+}
+
+/** Create a folder and return it. */
+export async function createFolder(
+  name: string,
+  owner: string = DEFAULT_OWNER
+): Promise<Folder> {
+  const [row] = await db.insert(folders).values({ owner, name }).returning();
+  return row;
+}
+
+/** Rename a folder (scoped to owner). Returns the updated row or null. */
+export async function renameFolder(
+  id: string,
+  name: string,
+  owner: string = DEFAULT_OWNER
+): Promise<Folder | null> {
+  const [row] = await db
+    .update(folders)
+    .set({ name, updatedAt: new Date() })
+    .where(and(eq(folders.id, id), eq(folders.owner, owner)))
+    .returning();
+  return row ?? null;
+}
+
+/**
+ * Delete a folder (scoped to owner). The transcripts.folder_id FK is
+ * ON DELETE SET NULL, so the folder's transcripts become unfiled rather than
+ * being deleted. Returns true if a folder was removed.
+ */
+export async function deleteFolder(
+  id: string,
+  owner: string = DEFAULT_OWNER
+): Promise<boolean> {
+  const deleted = await db
+    .delete(folders)
+    .where(and(eq(folders.id, id), eq(folders.owner, owner)))
+    .returning({ id: folders.id });
+  return deleted.length > 0;
+}
+
+/** Move a transcript into a folder (or out of any folder when null). */
+export async function moveTranscript(
+  transcriptId: string,
+  folderId: string | null,
+  owner: string = DEFAULT_OWNER
+): Promise<Transcript | null> {
+  const [row] = await db
+    .update(transcripts)
+    .set({ folderId, updatedAt: new Date() })
+    .where(and(eq(transcripts.id, transcriptId), eq(transcripts.owner, owner)))
+    .returning();
+  return row ?? null;
+}
 
 export interface CreateTranscriptInput {
   source: TranscriptSource;
@@ -45,6 +113,7 @@ export interface UpdateTranscriptInput {
   content?: string | null;
   durationSeconds?: number | null;
   assemblyaiId?: string | null;
+  folderId?: string | null;
 }
 
 /** List transcripts for an owner, newest first. */

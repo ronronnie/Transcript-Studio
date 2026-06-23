@@ -15,6 +15,13 @@
       "when": 1782071762921,
       "tag": "0001_shocking_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782149446921,
+      "tag": "0002_lovely_naoko",
+      "breakpoints": true
     }
   ]
 }
