@@ -165,6 +165,40 @@ export function Workspace({ username }: { username: string }) {
     }
   }
 
+  async function handleRenameTranscript(id: string, title: string) {
+    try {
+      const res = await fetch(`/api/transcripts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error ?? "Could not rename.");
+        return;
+      }
+      handleUpdated(data.transcript as TranscriptDTO);
+      toast.success("Renamed.");
+    } catch {
+      toast.error("Could not rename.");
+    }
+  }
+
+  async function handleDeleteTranscript(id: string) {
+    try {
+      const res = await fetch(`/api/transcripts/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error ?? "Could not delete.");
+        return;
+      }
+      handleDeleted(id);
+      toast.success("Transcript deleted.");
+    } catch {
+      toast.error("Could not delete.");
+    }
+  }
+
   async function handleMoveTranscript(
     transcriptId: string,
     folderId: string | null
@@ -205,6 +239,8 @@ export function Workspace({ username }: { username: string }) {
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onMoveTranscript={handleMoveTranscript}
+        onRenameTranscript={handleRenameTranscript}
+        onDeleteTranscript={handleDeleteTranscript}
       />
 
       <main className="flex flex-1 overflow-hidden">

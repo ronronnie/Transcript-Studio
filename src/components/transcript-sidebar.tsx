@@ -61,6 +61,8 @@ interface TranscriptSidebarProps {
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
   onMoveTranscript: (transcriptId: string, folderId: string | null) => void;
+  onRenameTranscript: (id: string, title: string) => void;
+  onDeleteTranscript: (id: string) => void;
 }
 
 function StatusHint({ status }: { status: TranscriptDTO["status"] }) {
@@ -89,14 +91,46 @@ function TranscriptRow({
   folders,
   onSelect,
   onMove,
+  onRename,
+  onRequestDelete,
 }: {
   transcript: TranscriptDTO;
   selected: boolean;
   folders: FolderDTO[];
   onSelect: (id: string) => void;
   onMove: (transcriptId: string, folderId: string | null) => void;
+  onRename: (id: string, title: string) => void;
+  onRequestDelete: (transcript: TranscriptDTO) => void;
 }) {
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(transcript.title ?? "");
   const otherFolders = folders.filter((f) => f.id !== transcript.folderId);
+
+  function commitRename() {
+    const next = draft.trim();
+    if (next && next !== (transcript.title ?? ""))
+      onRename(transcript.id, next);
+    setRenaming(false);
+  }
+
+  if (renaming) {
+    return (
+      <li className="px-1 py-0.5">
+        <Input
+          value={draft}
+          autoFocus
+          className="h-8"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitRename();
+            if (e.key === "Escape") setRenaming(false);
+          }}
+          onBlur={commitRename}
+        />
+      </li>
+    );
+  }
+
   return (
     <li
       className={cn(
@@ -128,6 +162,17 @@ function TranscriptRow({
           <MoreVertical className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {!transcript.isSample && (
+            <DropdownMenuItem
+              onClick={() => {
+                setDraft(transcript.title ?? "");
+                setRenaming(true);
+              }}
+            >
+              <Pencil className="size-4" />
+              Rename
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Folder className="size-4" />
@@ -149,10 +194,19 @@ function TranscriptRow({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
           {transcript.folderId && (
+            <DropdownMenuItem onClick={() => onMove(transcript.id, null)}>
+              Remove from folder
+            </DropdownMenuItem>
+          )}
+          {!transcript.isSample && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onMove(transcript.id, null)}>
-                Remove from folder
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onRequestDelete(transcript)}
+              >
+                <Trash2 className="size-4" />
+                Delete
               </DropdownMenuItem>
             </>
           )}
@@ -176,6 +230,8 @@ export function TranscriptSidebar({
   onRenameFolder,
   onDeleteFolder,
   onMoveTranscript,
+  onRenameTranscript,
+  onDeleteTranscript,
 }: TranscriptSidebarProps) {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -184,6 +240,8 @@ export function TranscriptSidebar({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [folderToDelete, setFolderToDelete] = useState<FolderDTO | null>(null);
+  const [transcriptToDelete, setTranscriptToDelete] =
+    useState<TranscriptDTO | null>(null);
 
   // Persist collapsed/expanded folder state across reloads.
   useEffect(() => {
@@ -234,6 +292,8 @@ export function TranscriptSidebar({
             folders={folders}
             onSelect={onSelect}
             onMove={onMoveTranscript}
+            onRename={onRenameTranscript}
+            onRequestDelete={setTranscriptToDelete}
           />
         ))}
       </ul>
@@ -516,6 +576,35 @@ export function TranscriptSidebar({
               }}
             >
               Delete folder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={transcriptToDelete !== null}
+        onOpenChange={(open) => !open && setTranscriptToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this transcript?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes “
+              {transcriptToDelete?.title ?? "Untitled transcript"}” and its chat
+              history. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (transcriptToDelete)
+                  onDeleteTranscript(transcriptToDelete.id);
+                setTranscriptToDelete(null);
+              }}
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
