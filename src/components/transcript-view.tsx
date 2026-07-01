@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -261,7 +262,7 @@ export function TranscriptView({
               </h1>
               {transcript.status === "processing" && (
                 <Badge variant="secondary">
-                  <Loader2 className="size-3 animate-spin" />
+                  <Spinner className="size-3" />
                   Processing
                 </Badge>
               )}
@@ -335,7 +336,7 @@ export function TranscriptView({
       <div className="pt-6">
         {transcript.status === "processing" && (
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 className="size-4 animate-spin" />
+            <Spinner className="size-4" />
             Transcribing your audio… this can take a little while.
           </div>
         )}

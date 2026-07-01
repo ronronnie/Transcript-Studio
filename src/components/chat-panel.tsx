@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Info, Loader2, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { MessageRole, TranscriptDTO } from "@/lib/transcript-types";
@@ -166,7 +167,7 @@ export function ChatPanel({ transcript }: { transcript: TranscriptDTO }) {
               >
                 {m.content ||
                   (streaming && i === messages.length - 1 ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Spinner className="size-4" />
                   ) : (
                     ""
                   ))}

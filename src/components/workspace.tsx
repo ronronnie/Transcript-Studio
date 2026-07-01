@@ -1,23 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic } from "lucide-react";
 
 import { toast } from "sonner";
 
 import { ChatPanel } from "@/components/chat-panel";
 import { ConsentNotice } from "@/components/consent-notice";
 import { ImportDialog } from "@/components/import-dialog";
+import { NewChooser } from "@/components/new-chooser";
 import { RecordDialog } from "@/components/record-dialog";
 import { TranscriptSidebar } from "@/components/transcript-sidebar";
 import { TranscriptView } from "@/components/transcript-view";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { FolderDTO, TranscriptDTO } from "@/lib/transcript-types";
 
 const POLL_INTERVAL_MS = 3000;
@@ -26,7 +19,9 @@ export function Workspace({ username }: { username: string }) {
   const [transcripts, setTranscripts] = useState<TranscriptDTO[]>([]);
   const [folders, setFolders] = useState<FolderDTO[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creatingNew, setCreatingNew] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [importTab, setImportTab] = useState<"upload" | "paste">("upload");
   const [recordOpen, setRecordOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,6 +81,23 @@ export function Workspace({ username }: { username: string }) {
   function handleCreated(transcript: TranscriptDTO) {
     setTranscripts((prev) => [transcript, ...prev]);
     setSelectedId(transcript.id);
+    setCreatingNew(false);
+  }
+
+  function handleSelect(id: string) {
+    setSelectedId(id);
+    setCreatingNew(false);
+  }
+
+  function openImport(tab: "upload" | "paste") {
+    setImportTab(tab);
+    setCreatingNew(false);
+    setImportOpen(true);
+  }
+
+  function openRecord() {
+    setCreatingNew(false);
+    setRecordOpen(true);
   }
 
   function handleUpdated(updated: TranscriptDTO) {
@@ -231,9 +243,8 @@ export function Workspace({ username }: { username: string }) {
         folders={folders}
         selectedId={selectedId}
         loading={loading}
-        onSelect={setSelectedId}
-        onImport={() => setImportOpen(true)}
-        onRecord={() => setRecordOpen(true)}
+        onSelect={handleSelect}
+        onNew={() => setCreatingNew(true)}
         onDeleteAll={handleDeleteAll}
         onCreateFolder={handleCreateFolder}
         onRenameFolder={handleRenameFolder}
@@ -244,7 +255,7 @@ export function Workspace({ username }: { username: string }) {
       />
 
       <main className="flex flex-1 overflow-hidden">
-        {selected ? (
+        {selected && !creatingNew ? (
           <>
             <div className="flex-1 overflow-y-auto">
               <TranscriptView
@@ -256,28 +267,13 @@ export function Workspace({ username }: { username: string }) {
             <ChatPanel key={selected.id} transcript={selected} />
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center p-6">
-            <Card className="w-full max-w-md text-center">
-              <CardHeader className="items-center">
-                <div className="bg-primary text-primary-foreground mx-auto flex size-12 items-center justify-center rounded-xl">
-                  <Mic className="size-6" />
-                </div>
-                <CardTitle className="mt-2 text-2xl">
-                  Transcript Studio
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Record or import a transcript, then ask an LLM about it.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm">
-                  {transcripts.length === 0
-                    ? "Import audio or paste text to get started."
-                    : "Select a transcript from the sidebar to read it."}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          // Default landing + the "New" view both show the chooser.
+          <NewChooser
+            onTranscript={() => openImport("paste")}
+            onAudio={() => openImport("upload")}
+            onRecord={openRecord}
+            onCancel={selected ? () => setCreatingNew(false) : undefined}
+          />
         )}
       </main>
 
@@ -285,6 +281,7 @@ export function Workspace({ username }: { username: string }) {
         open={importOpen}
         onOpenChange={setImportOpen}
         onCreated={handleCreated}
+        defaultTab={importTab}
       />
 
       {recordOpen && (

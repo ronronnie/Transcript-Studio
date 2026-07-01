@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,17 @@ interface ImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (transcript: TranscriptDTO) => void;
+  /** Which tab to open on. */
+  defaultTab?: "upload" | "paste";
 }
 
 export function ImportDialog({
   open,
   onOpenChange,
   onCreated,
+  defaultTab = "upload",
 }: ImportDialogProps) {
+  const [tab, setTab] = useState<string>(defaultTab);
   // Upload tab
   const [file, setFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -39,6 +43,12 @@ export function ImportDialog({
   const [pasteError, setPasteError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
+
+  // Open on the requested tab each time the dialog is shown.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (open) setTab(defaultTab);
+  }, [open, defaultTab]);
 
   function reset() {
     setFile(null);
@@ -129,7 +139,8 @@ export function ImportDialog({
         </DialogHeader>
 
         <Tabs
-          defaultValue="upload"
+          value={tab}
+          onValueChange={(value) => setTab(value as string)}
           className="mt-1 flex w-full min-w-0 flex-col"
         >
           <TabsList className="w-full">

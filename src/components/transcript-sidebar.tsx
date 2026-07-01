@@ -8,8 +8,6 @@ import {
   FileText,
   Folder,
   FolderPlus,
-  Loader2,
-  Mic,
   MoreVertical,
   Pencil,
   Plus,
@@ -19,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,8 +53,7 @@ interface TranscriptSidebarProps {
   selectedId: string | null;
   loading: boolean;
   onSelect: (id: string) => void;
-  onImport: () => void;
-  onRecord: () => void;
+  onNew: () => void;
   onDeleteAll: () => void;
   onCreateFolder: (name: string) => void;
   onRenameFolder: (id: string, name: string) => void;
@@ -69,7 +67,7 @@ function StatusHint({ status }: { status: TranscriptDTO["status"] }) {
   if (status === "processing") {
     return (
       <span className="text-muted-foreground flex items-center gap-1 text-xs">
-        <Loader2 className="size-3 animate-spin" />
+        <Spinner className="size-3" />
         Transcribing…
       </span>
     );
@@ -223,8 +221,7 @@ export function TranscriptSidebar({
   selectedId,
   loading,
   onSelect,
-  onImport,
-  onRecord,
+  onNew,
   onDeleteAll,
   onCreateFolder,
   onRenameFolder,
@@ -393,7 +390,7 @@ export function TranscriptSidebar({
     <aside className="bg-sidebar text-sidebar-foreground flex h-full w-72 shrink-0 flex-col border-r">
       <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-md">
+          <div className="bg-brand-gradient flex size-8 shrink-0 items-center justify-center rounded-md text-white shadow-sm">
             <FileText className="size-4" />
           </div>
           <div className="min-w-0">
@@ -409,19 +406,10 @@ export function TranscriptSidebar({
         </div>
       </div>
 
-      <div className="flex gap-2 px-3 pt-3">
-        <Button size="sm" className="flex-1 justify-start" onClick={onImport}>
+      <div className="px-3 pt-3">
+        <Button size="sm" className="w-full justify-center" onClick={onNew}>
           <Plus className="size-4" />
-          Import
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 justify-start"
-          onClick={onRecord}
-        >
-          <Mic className="size-4" />
-          Record
+          New
         </Button>
       </div>
 

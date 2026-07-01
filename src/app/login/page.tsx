@@ -50,13 +50,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-muted/30 flex min-h-dvh items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
+    <div className="bg-muted/30 relative flex min-h-dvh items-center justify-center p-6">
+      <div className="brand-glow pointer-events-none absolute inset-0" />
+      <Card className="relative w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <div className="bg-primary text-primary-foreground mx-auto flex size-12 items-center justify-center rounded-xl">
+          <div className="bg-brand-gradient mx-auto flex size-12 items-center justify-center rounded-xl text-white shadow-md">
             <Mic className="size-6" />
           </div>
-          <CardTitle className="mt-2 text-xl">Transcript Studio</CardTitle>
+          <CardTitle className="text-brand-gradient mt-2 text-xl">
+            Transcript Studio
+          </CardTitle>
           <CardDescription>Sign in to continue</CardDescription>
         </CardHeader>
         <CardContent>
